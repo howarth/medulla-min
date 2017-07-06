@@ -27,9 +27,13 @@ trait Id {
   override def hashCode(): Int = this.id.hashCode
 }
 
-// Use if String Id becomes more complicated
-// trait StringId(val id: String)
-abstract class DataId extends Id
+abstract class DataId extends Id {
+  val sep = ":"
+  val fileSep = "_"
+  lazy val ancestors = this.toString.split(sep).map(ParentId(_))
+}
+class ParentId(val id : String) extends Id
+object ParentId{def apply(id : String) = new ParentId(id)}
 
 class StringId(val id : String) extends DataId
 object StringId{def apply(id : String) = new StringId(id)}

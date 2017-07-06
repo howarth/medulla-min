@@ -83,9 +83,11 @@ trait Matrix2DRWDataStore extends Matrix2DWritableDataStore with Matrix2DReadabl
  TimeSeries
  */
 trait TimeSeriesReadableDataStore extends ReadableDataStore {
+  /*
   def getFirstTimestamp(id : TimeSeriesId) : Timestamp
   def getLastTimestamp(id : TimeSeriesId) : Timestamp
   def getTimes(id : TimeSeriesId) : Vector[Timestamp]
+  */
 }
 trait TimeSeriesWritableDataStore extends WritableDataStore {
 }
@@ -106,7 +108,7 @@ trait SingleChannelTimeSeriesRWDataStore extends
 
 trait MultiChannelTimeSeriesReadableDataStore extends TimeSeriesReadableDataStore{
   def getMultiChannelTimeSeries(id : MultiChannelTimeSeriesId): MultiChannelTimeSeriesData[_]
-  def getChannels(id : MultiChannelTimeSeriesId) : Vector[TimeSeriesChannelId]
+  def getChannels(id : MultiChannelTimeSeriesId, group : String) : Vector[TimeSeriesChannelId]
 }
 trait MultiChannelTimeSeriesWritableDataStore extends TimeSeriesWritableDataStore{
   def putMultiChannelTimeSeries(id : MultiChannelTimeSeriesId, data : MultiChannelTimeSeriesData[_]) : Unit

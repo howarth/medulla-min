@@ -3,6 +3,7 @@ package main.scala.core
 import scala.collection.breakOut
 import scala.reflect.runtime.universe._
 import main.java.constants.DataTypeStrings
+import breeze.linalg.{DenseVector, DenseMatrix}
 
 class DataTypeStringData(val typeString : String, val data : Data)
 object DataTypeStringData{
@@ -42,33 +43,33 @@ object IntScalarData { def apply(v : Int) = new IntScalarData(v)}
 object BooleanScalarData { def apply(v : Boolean) = new BooleanScalarData(v)}
 
 
-class VectorData[T](val data : Vector[T])(implicit tag : TypeTag[T]) extends Data {
+class VectorData[T](val data : DenseVector[T])(implicit tag : TypeTag[T]) extends Data {
   val metadata = new VectorMetadata[T](data.length)(tag)
 }
 class VectorMetadata[T](val length : Int)(implicit tag : TypeTag[T]) extends HomogenousDataMetadata[T]()(tag)
 
-class DoubleVectorData(data : Vector[Double]) extends VectorData[Double](data)
-class IntVectorData(data : Vector[Int]) extends VectorData[Int](data)
-class BooleanVectorData(data : Vector[Boolean]) extends VectorData[Boolean](data)
-object DoubleVectorData {def apply(v : Vector[Double]) = new DoubleVectorData(v)}
-object IntVectorData {def apply(v : Vector[Int]) = new IntVectorData(v)}
-object BooleanVectorData {def apply(v : Vector[Boolean]) = new BooleanVectorData(v)}
+class DoubleVectorData(data : DenseVector[Double]) extends VectorData[Double](data)
+class IntVectorData(data : DenseVector[Int]) extends VectorData[Int](data)
+class BooleanVectorData(data : DenseVector[Boolean]) extends VectorData[Boolean](data)
+object DoubleVectorData {def apply(v : DenseVector[Double]) = new DoubleVectorData(v)}
+object IntVectorData {def apply(v : DenseVector[Int]) = new IntVectorData(v)}
+object BooleanVectorData {def apply(v : DenseVector[Boolean]) = new BooleanVectorData(v)}
 
 /*
   Matrix 2D
  */
-class Matrix2DData[T](val data : Vector[Vector[T]])(implicit tag : TypeTag[T]) extends Data {
-  val metadata = new Matrix2DMetadata[T](Tuple2(data.length, data(0).length))(tag)
+class Matrix2DData[T](val data : DenseMatrix[T])(implicit tag : TypeTag[T]) extends Data {
+  val metadata = new Matrix2DMetadata[T](Tuple2(data.rows, data.cols))(tag)
 }
 class Matrix2DMetadata[T](val shape : Tuple2[Int,Int])(implicit tag : TypeTag[T]) extends HomogenousDataMetadata[T]()(tag)
 
-class DoubleMatrix2DData(data : Vector[Vector[Double]]) extends Matrix2DData[Double](data)
-class IntMatrix2DData(data : Vector[Vector[Int]]) extends Matrix2DData[Int](data)
-class BooleanMatrix2DData(data : Vector[Vector[Boolean]]) extends Matrix2DData[Boolean](data)
+class DoubleMatrix2DData(data : DenseMatrix[Double]) extends Matrix2DData[Double](data)
+class IntMatrix2DData(data : DenseMatrix[Int]) extends Matrix2DData[Int](data)
+class BooleanMatrix2DData(data : DenseMatrix[Boolean]) extends Matrix2DData[Boolean](data)
 
-object DoubleMatrix2DData {def apply(v : Vector[Vector[Double]]) = new DoubleMatrix2DData(v)}
-object IntMatrix2DData {def apply(v : Vector[Vector[Int]]) = new IntMatrix2DData(v)}
-object BooleanMatrix2DData {def apply(v : Vector[Vector[Boolean]]) = new BooleanMatrix2DData(v)}
+object DoubleMatrix2DData {def apply(v : DenseMatrix[Double]) = new DoubleMatrix2DData(v)}
+object IntMatrix2DData {def apply(v : DenseMatrix[Int]) = new IntMatrix2DData(v)}
+object BooleanMatrix2DData {def apply(v : DenseMatrix[Boolean]) = new BooleanMatrix2DData(v)}
 
 
 abstract class SingleChannelTimeSeriesData[T](
@@ -110,13 +111,12 @@ object BooleanSingleChannelTimeSeriesData {
 }
 
 
-
 abstract class MultiChannelTimeSeriesData[T](
-    val data : Vector[Vector[T]],
+    val data : DenseMatrix[T],
     val times : Vector[Timestamp],
     val channels : Vector[TimeSeriesChannelId])
   extends Data {
-  val metadata = new MultiChannelTimeSeriesMetadata(times.length)
+  val metadata = null //new MultiChannelTimeSeriesMetadata(times.length)
 
   override def equals(that: Any): Boolean = {
     if(this.getClass != that.getClass) return false
@@ -124,35 +124,35 @@ abstract class MultiChannelTimeSeriesData[T](
     thatCast.times == this.times && thatCast.channels == this.channels &&  thatCast.data == this.data
   }
 }
-class MultiChannelTimeSeriesMetadata[T](val length : Int)(implicit tag : TypeTag[T]) extends HomogenousDataMetadata[T]()(tag)
+class MultiChannelTimeSeriesMetadata[T](val length : Int, val sfreq : BigDecimal)(implicit tag : TypeTag[T]) extends HomogenousDataMetadata[T]()(tag)
 
-class DoubleMultiChannelTimeSeriesData( data : Vector[Vector[Double]],
+class DoubleMultiChannelTimeSeriesData( data : DenseMatrix[Double],
     times : Vector[Timestamp],
     channels : Vector[TimeSeriesChannelId]) extends MultiChannelTimeSeriesData[Double](data, times, channels)
-class IntMultiChannelTimeSeriesData( data : Vector[Vector[Int]],
+class IntMultiChannelTimeSeriesData( data : DenseMatrix[Int],
                                          times : Vector[Timestamp],
                                          channels : Vector[TimeSeriesChannelId]) extends MultiChannelTimeSeriesData[Int](data, times, channels)
-class BooleanMultiChannelTimeSeriesData( data : Vector[Vector[Boolean]],
+class BooleanMultiChannelTimeSeriesData( data : DenseMatrix[Boolean],
                                          times : Vector[Timestamp],
                                          channels : Vector[TimeSeriesChannelId]) extends MultiChannelTimeSeriesData[Boolean](data, times, channels)
 
 object DoubleMultiChannelTimeSeriesData {
-  def apply(data : Vector[Vector[Double]], times : Vector[Timestamp], channels : Vector[TimeSeriesChannelId]) =
+  def apply(data : DenseMatrix[Double], times : Vector[Timestamp], channels : Vector[TimeSeriesChannelId]) =
     new DoubleMultiChannelTimeSeriesData(data, times, channels)
 }
 object IntMultiChannelTimeSeriesData {
-  def apply(data : Vector[Vector[Int]], times : Vector[Timestamp], channels : Vector[TimeSeriesChannelId]) =
+  def apply(data : DenseMatrix[Int], times : Vector[Timestamp], channels : Vector[TimeSeriesChannelId]) =
     new IntMultiChannelTimeSeriesData(data, times, channels)
 }
 object BooleanMultiChannelTimeSeriesData {
-  def apply(data : Vector[Vector[Boolean]], times : Vector[Timestamp], channels : Vector[TimeSeriesChannelId]) =
+  def apply(data : DenseMatrix[Boolean], times : Vector[Timestamp], channels : Vector[TimeSeriesChannelId]) =
     new BooleanMultiChannelTimeSeriesData(data, times, channels)
 }
 
 
 /*
 abstract class MultiChannelTimeSeriesData[T](
-  val data : Vector[Vector[T]],
+  val data : DenseMatrix[T]],
   val times : Vector[Timestamp],
   val channels : Vector[TimeSeriesChannelId]) extends Data{
 
@@ -161,7 +161,7 @@ abstract class MultiChannelTimeSeriesData[T](
 
 
 
-class DoubleMultiChannelTimeSeriesData(data : Vector[Vector[Double]],
+class DoubleMultiChannelTimeSeriesData(data : DenseMatrix[Double]],
     times : Vector[Timestamp],
     channels : Vector[TimeSeriesChannelId])
   extends MultiChannelTimeSeriesData[Double](data, times, channels){
@@ -177,7 +177,7 @@ class DoubleMultiChannelTimeSeriesData(data : Vector[Vector[Double]],
   }
 }
 object DoubleMultiChannelTimeSeriesData {
-  def apply(data : Vector[Vector[Double]], times : Vector[Timestamp], channels : Vector[TimeSeriesChannelId]) =
+  def apply(data : DenseMatrix[Double]], times : Vector[Timestamp], channels : Vector[TimeSeriesChannelId]) =
     new DoubleMultiChannelTimeSeriesData(data, times, channels)
 }
 class MultiChannelTimeSeriesMetadata[T](val length : Int, val nChannels : Int) extends HomogenousDataMetadata[T]

@@ -8,3 +8,4 @@ public final class DataTypeStrings {
     final public static String INT_SCALAR = "INT_SCALAR";
     final public static String BOOLEAN_SCALAR = "BOOLEAN_SCALAR";
 }
+
