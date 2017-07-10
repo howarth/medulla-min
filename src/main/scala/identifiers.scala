@@ -32,6 +32,8 @@ abstract class DataId extends Id {
   val fileSep = "_"
   lazy val ancestors = this.toString.split(sep).map(ParentId(_))
 }
+
+class TypelessDataId(val id : String) extends DataId
 class ParentId(val id : String) extends Id
 object ParentId{def apply(id : String) = new ParentId(id)}
 

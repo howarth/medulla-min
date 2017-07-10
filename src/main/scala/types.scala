@@ -1,6 +1,7 @@
 package main.scala.store
 import scala.reflect.runtime.universe._
 import main.scala.core._
+import main.java.constants.DataTypeStrings
 
 case class DataIdNotInRegistryException(msg : String) extends Exception(msg)
 case class DataIdNotInStoreException(msg : String) extends Exception(msg)
@@ -17,9 +18,8 @@ trait DataContext {
 
 trait DataRegistry{
   def dataIsRegistered(id : DataId) : Boolean
-  def registerData(id : DataId, structMeta : Metadata) : Unit
-  def deleteData(id : DataId)
-  def getMetadata(id : DataId) : Metadata
+  def registerData(id : DataId) : Unit
+  def getTypedId(id : String) : DataId
 }
 
 trait DataStore {

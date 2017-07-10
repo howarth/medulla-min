@@ -5,13 +5,43 @@ import scala.reflect.runtime.universe._
 import main.java.constants.DataTypeStrings
 import breeze.linalg.{DenseVector, DenseMatrix}
 
-class DataTypeStringData(val typeString : String, val data : Data)
 object DataTypeStringData{
-  def apply(data : Data) = new DataTypeStringData(typeString(data), data)
-  val typeString : (Data => String) = (d : Data) => d match {
+  val typeStringFromData : (Data => String) = (d : Data) => d match {
     case _ : DoubleScalarData => DataTypeStrings.DOUBLE_SCALAR
     case _ : IntScalarData => DataTypeStrings.INT_SCALAR
     case _ : BooleanScalarData => DataTypeStrings.BOOLEAN_SCALAR
+    case _ => throw new NotImplementedError()
+  }
+  val typeStringFromId : (DataId => String) = (id : DataId) => id  match {
+    case _ : DoubleScalarId => DataTypeStrings.DOUBLE_SCALAR
+    case _ : IntScalarId => DataTypeStrings.INT_SCALAR
+    case _ : BooleanScalarId => DataTypeStrings.BOOLEAN_SCALAR
+    case _ : DoubleVectorId => DataTypeStrings.DOUBLE_VECTOR
+    case _ : IntVectorId => DataTypeStrings.INT_VECTOR
+    case _ : BooleanVectorId => DataTypeStrings.BOOLEAN_VECTOR
+    case _ : DoubleMatrix2DId => DataTypeStrings.DOUBLE_MATRIX
+    case _ : IntMatrix2DId => DataTypeStrings.INT_MATRIX
+    case _ : BooleanMatrix2DId => DataTypeStrings.BOOLEAN_MATRIX
+    case _ : DoubleMultiChannelTimeSeriesId => DataTypeStrings.DOUBLE_TS
+    case _ : IntMultiChannelTimeSeriesId => DataTypeStrings.INT_TS
+    case _ : BooleanMultiChannelTimeSeriesId => DataTypeStrings.BOOLEAN_TS
+    case _ => throw new NotImplementedError()
+  }
+  def idFromTypeStringAndIdString(typeString : String, idStr : String) : DataId = {
+    typeString match {
+      case DataTypeStrings.DOUBLE_SCALAR => DoubleScalarId(idStr)
+      case DataTypeStrings.INT_SCALAR => IntScalarId(idStr)
+      case DataTypeStrings.BOOLEAN_SCALAR => BooleanScalarId(idStr)
+      case DataTypeStrings.DOUBLE_VECTOR => DoubleVectorId(idStr)
+      case DataTypeStrings.INT_VECTOR => IntVectorId(idStr)
+      case DataTypeStrings.BOOLEAN_VECTOR => BooleanVectorId(idStr)
+      case DataTypeStrings.DOUBLE_MATRIX => DoubleMatrix2DId(idStr)
+      case DataTypeStrings.INT_MATRIX => IntMatrix2DId(idStr)
+      case DataTypeStrings.BOOLEAN_MATRIX  => BooleanMatrix2DId(idStr)
+      case DataTypeStrings.DOUBLE_TS => DoubleMultiChannelTimeSeriesId(idStr)
+      case DataTypeStrings.INT_TS => IntMultiChannelTimeSeriesId(idStr)
+      case DataTypeStrings.BOOLEAN_TS  => BooleanMultiChannelTimeSeriesId(idStr)
+    }
   }
 }
 
@@ -116,7 +146,7 @@ abstract class MultiChannelTimeSeriesData[T](
     val times : Vector[Timestamp],
     val channels : Vector[TimeSeriesChannelId])
   extends Data {
-  val metadata = null //new MultiChannelTimeSeriesMetadata(times.length)
+  val metadata = new MultiChannelTimeSeriesMetadata(times.length, BigDecimal(1)/(times(0).underlyingBD-times(1).underlyingBD))
 
   override def equals(that: Any): Boolean = {
     if(this.getClass != that.getClass) return false
