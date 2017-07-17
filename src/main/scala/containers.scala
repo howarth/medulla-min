@@ -12,7 +12,7 @@ object DataTypeStringData{
     case _ : BooleanScalarData => DataTypeStrings.BOOLEAN_SCALAR
     case _ => throw new NotImplementedError()
   }
-  val typeStringFromId : (DataId => String) = (id : DataId) => id  match {
+  def typeStringFromId(id : DataId) : String = id match {
     case _ : DoubleScalarId => DataTypeStrings.DOUBLE_SCALAR
     case _ : IntScalarId => DataTypeStrings.INT_SCALAR
     case _ : BooleanScalarId => DataTypeStrings.BOOLEAN_SCALAR
@@ -89,9 +89,9 @@ object BooleanVectorData {def apply(v : DenseVector[Boolean]) = new BooleanVecto
   Matrix 2D
  */
 class Matrix2DData[T](val data : DenseMatrix[T])(implicit tag : TypeTag[T]) extends Data {
-  val metadata = new Matrix2DMetadata[T](Tuple2(data.rows, data.cols))(tag)
+  val metadata = new Matrix2DMetadata[T](data.rows, data.cols)(tag)
 }
-class Matrix2DMetadata[T](val shape : Tuple2[Int,Int])(implicit tag : TypeTag[T]) extends HomogenousDataMetadata[T]()(tag)
+class Matrix2DMetadata[T](val rows : Int, val cols : Int)(implicit tag : TypeTag[T]) extends HomogenousDataMetadata[T]()(tag)
 
 class DoubleMatrix2DData(data : DenseMatrix[Double]) extends Matrix2DData[Double](data)
 class IntMatrix2DData(data : DenseMatrix[Int]) extends Matrix2DData[Int](data)
@@ -146,7 +146,7 @@ abstract class MultiChannelTimeSeriesData[T](
     val times : Vector[Timestamp],
     val channels : Vector[TimeSeriesChannelId])
   extends Data {
-  val metadata = new MultiChannelTimeSeriesMetadata(times.length, BigDecimal(1)/(times(0).underlyingBD-times(1).underlyingBD))
+  val metadata = new MultiChannelTimeSeriesMetadata(times.length, BigDecimal(1)/(times(1).underlyingBD-times(0).underlyingBD))
 
   override def equals(that: Any): Boolean = {
     if(this.getClass != that.getClass) return false
@@ -177,6 +177,34 @@ object IntMultiChannelTimeSeriesData {
 object BooleanMultiChannelTimeSeriesData {
   def apply(data : DenseMatrix[Boolean], times : Vector[Timestamp], channels : Vector[TimeSeriesChannelId]) =
     new BooleanMultiChannelTimeSeriesData(data, times, channels)
+}
+
+class MultiChannelTimeSeriesWindowData[T](override val data : DenseMatrix[T],
+                                          override val times : Vector[Timestamp],
+                                          override val channels : Vector[TimeSeriesChannelId])
+  extends MultiChannelTimeSeriesData[T](data, times, channels)
+
+
+class DoubleMultiChannelTimeSeriesWindowData( data : DenseMatrix[Double],
+                                        times : Vector[Timestamp],
+                                        channels : Vector[TimeSeriesChannelId]) extends MultiChannelTimeSeriesWindowData[Double](data, times, channels)
+class IntMultiChannelTimeSeriesWindowData( data : DenseMatrix[Int],
+                                     times : Vector[Timestamp],
+                                     channels : Vector[TimeSeriesChannelId]) extends MultiChannelTimeSeriesWindowData[Int](data, times, channels)
+class BooleanMultiChannelTimeSeriesWindowData( data : DenseMatrix[Boolean],
+                                         times : Vector[Timestamp],
+                                         channels : Vector[TimeSeriesChannelId]) extends MultiChannelTimeSeriesWindowData[Boolean](data, times, channels)
+object DoubleMultiChannelTimeSeriesWindowData {
+  def apply(data : DenseMatrix[Double], times : Vector[Timestamp], channels : Vector[TimeSeriesChannelId]) =
+    new DoubleMultiChannelTimeSeriesWindowData(data, times, channels)
+}
+object IntMultiChannelTimeSeriesWindowData {
+  def apply(data : DenseMatrix[Int], times : Vector[Timestamp], channels : Vector[TimeSeriesChannelId]) =
+    new IntMultiChannelTimeSeriesWindowData(data, times, channels)
+}
+object BooleanMultiChannelTimeSeriesWindowData {
+  def apply(data : DenseMatrix[Boolean], times : Vector[Timestamp], channels : Vector[TimeSeriesChannelId]) =
+    new BooleanMultiChannelTimeSeriesWindowData(data, times, channels)
 }
 
 

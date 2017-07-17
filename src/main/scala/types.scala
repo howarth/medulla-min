@@ -47,7 +47,7 @@ trait ScalarReadableDataStore extends ScalarStore with ReadableDataStore{
   def getScalar(id : ScalarId): ScalarData[_]
 }
 trait ScalarWritableDataStore extends ScalarStore with WritableDataStore{
-  def putScalar[T](id : ScalarId, data : ScalarData[T])
+  def putScalar(id : ScalarId, data : ScalarData[_])
   def deleteScalar(id : ScalarId) : Unit
 }
 trait ScalarRWDataStore extends ScalarReadableDataStore with ScalarWritableDataStore
@@ -61,7 +61,7 @@ trait VectorReadableDataStore extends VectorStore with ReadableDataStore{
   def getVector(id : VectorId): VectorData[_]
 }
 trait VectorWritableDataStore extends VectorStore with WritableDataStore{
-  def putVector[T](id : VectorId, data : VectorData[T]) : Unit
+  def putVector(id : VectorId, data : VectorData[_]) : Unit
   def deleteVector(id : VectorId) : Unit
 }
 trait VectorRWDataStore extends VectorReadableDataStore with VectorWritableDataStore
@@ -74,7 +74,7 @@ trait Matrix2DReadableDataStore extends Matrix2DStore with ReadableDataStore{
   def getMatrix2D(id : Matrix2DId) : Matrix2DData[_]
 }
 trait Matrix2DWritableDataStore extends Matrix2DStore with WritableDataStore{
-  def putMatrix2D[T](id : Matrix2DId, data : Matrix2DData[T]) : Unit
+  def putMatrix2D(id : Matrix2DId, data : Matrix2DData[_]) : Unit
   def deleteMatrix2D(id : Matrix2DId) : Unit
 }
 trait Matrix2DRWDataStore extends Matrix2DWritableDataStore with Matrix2DReadableDataStore
@@ -105,7 +105,6 @@ trait SingleChannelTimeSeriesRWDataStore extends
   SingleChannelTimeSeriesReadableDataStore with
   SingleChannelTimeSeriesWritableDataStore
 
-
 trait MultiChannelTimeSeriesReadableDataStore extends TimeSeriesReadableDataStore{
   def getMultiChannelTimeSeries(id : MultiChannelTimeSeriesId): MultiChannelTimeSeriesData[_]
   def getChannels(id : MultiChannelTimeSeriesId, group : String) : Vector[TimeSeriesChannelId]
@@ -117,3 +116,8 @@ trait MultiChannelTimeSeriesWritableDataStore extends TimeSeriesWritableDataStor
 trait MultiChannelTimeSeriesRWDataStore extends
   MultiChannelTimeSeriesReadableDataStore with
   MultiChannelTimeSeriesWritableDataStore
+
+
+trait MultiChannelTimeSeriesWindowReadableDataStore extends ReadableDataStore {
+  def getMultiChannelTimeSeriesWindow(id : MultiChannelTimeSeriesWindowId) : MultiChannelTimeSeriesWindowData[_]
+}

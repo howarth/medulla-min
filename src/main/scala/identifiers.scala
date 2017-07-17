@@ -33,6 +33,12 @@ abstract class DataId extends Id {
   lazy val ancestors = this.toString.split(sep).map(ParentId(_))
 }
 
+trait SubsetOfDataId extends DataId {
+  final val subsetSep = '#'
+  val fullDataId : DataId
+  val fullDataIdStr = id.split(subsetSep)(0)
+}
+
 class TypelessDataId(val id : String) extends DataId
 class ParentId(val id : String) extends Id
 object ParentId{def apply(id : String) = new ParentId(id)}
@@ -101,11 +107,23 @@ object DoubleMultiChannelTimeSeriesId{def apply(id: String) = new DoubleMultiCha
 object IntMultiChannelTimeSeriesId{def apply(id: String) = new IntMultiChannelTimeSeriesId(id)}
 object BooleanMultiChannelTimeSeriesId{def apply(id: String) = new BooleanMultiChannelTimeSeriesId(id)}
 
+abstract class MultiChannelTimeSeriesWindowId(val id: String) extends SubsetOfDataId
+class DoubleMultiChannelTimeSeriesWindowId(override val id : String) extends MultiChannelTimeSeriesWindowId(id){
+  override lazy val fullDataId: DataId = DoubleMultiChannelTimeSeriesId(this.fullDataIdStr)
+}
+class IntMultiChannelTimeSeriesWindowId(override val id : String) extends MultiChannelTimeSeriesWindowId(id){
+  override lazy val fullDataId: DataId = IntMultiChannelTimeSeriesId(this.fullDataIdStr)
+}
+class BooleanMultiChannelTimeSeriesWindowId(override val id : String) extends MultiChannelTimeSeriesWindowId(id){
+  override lazy val fullDataId: DataId = BooleanMultiChannelTimeSeriesId(this.fullDataIdStr)
+}
 
-// timeString is string of epoch
+object DoubleMultiChannelTimeSeriesWindowId{def apply(id: String) = new DoubleMultiChannelTimeSeriesWindowId(id)}
+object IntMultiChannelTimeSeriesWindowId{def apply(id: String) = new IntMultiChannelTimeSeriesWindowId(id)}
+object BooleanMultiChannelTimeSeriesWindowId{def apply(id: String) = new BooleanMultiChannelTimeSeriesWindowId(id)}
+
 class Timestamp(t : BigDecimal) extends Ordered[Timestamp] {
   val underlyingBD: BigDecimal = IdUtils.truncatedBigDecimal(t)
-
   override def equals(that: Any): Boolean = that match {
     case that: Timestamp => underlyingBD equals that.underlyingBD
     case _ => false

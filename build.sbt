@@ -17,4 +17,5 @@ resolvers += "Sonatype Releases" at "https://oss.sonatype.org/content/repositori
 fork in console := true
 fork in run := true
 javaOptions += "-Xmx4G"
+scalacOptions += "-target:jvm-1.7"
 
