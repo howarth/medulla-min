@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets
 
 import main.scala.core._
 import main.java.constants.DataTypeStrings
+import scala.collection.Searching._
 
 import scala.collection.JavaConverters._
 
@@ -102,7 +103,11 @@ class BinRegistry(baseDirectoryString : String) extends DataRegistry{
   def registryPath(id : DataId) : Path = storeUtils.channelPathFn(id, registryChannelName)
 
   override def dataIsRegistered(id: DataId): Boolean = {
-    storeUtils.channelPathFn(id, registryChannelName).toFile.exists
+    val fullId : DataId = id match {
+      case id : SubsetOfDataId => id.fullDataId
+      case id : DataId => id
+    }
+    storeUtils.channelPathFn(fullId, registryChannelName).toFile.exists
   }
   override def registerData(id: DataId): Unit = {
     val p : Path = registryPath(id)
@@ -292,18 +297,16 @@ class BinStore(baseDirectoryString : String, nThreads : Int = 32) extends DataSt
 
 
 
-  def writeFullChannel(id : MultiChannelTimeSeriesId, channelId : TimeSeriesChannelId, data : Array[_], start : Int, length : Int, sfreq : BigDecimal) : Unit = {
+  def writeFullChannel(id : MultiChannelTimeSeriesId, channelId : TimeSeriesChannelId, data : Array[_], start : Int, length : Int) : Unit = {
     val channelFile : File = channelPathFn(id, channelId.toString).toFile
     val raf = new RandomAccessFile(channelFile, "rw")
     val outChannel = raf.getChannel
     val fileLength = id match {
-      case id : DoubleMultiChannelTimeSeriesId => 8 + 4 + 8 * data.length
-      case id : IntMultiChannelTimeSeriesId => 8 + 4 + 4 * data.length
-      case id : BooleanMultiChannelTimeSeriesId => 8 + 4 +  data.length
+      case id : DoubleMultiChannelTimeSeriesId =>   8 * data.length
+      case id : IntMultiChannelTimeSeriesId =>   4 * data.length
+      case id : BooleanMultiChannelTimeSeriesId =>    data.length
     }
     val mbb : MappedByteBuffer= outChannel.map(FileChannel.MapMode.READ_WRITE, 0, fileLength)
-    mbb.putDouble(sfreq.toDouble)
-    mbb.putInt(data.length)
     data match {
       case array : Array[Double] => {
         val mdb: DoubleBuffer = mbb.asDoubleBuffer
@@ -323,28 +326,32 @@ class BinStore(baseDirectoryString : String, nThreads : Int = 32) extends DataSt
     outChannel.close()
   }
 
-  def readFullChannel(id : MultiChannelTimeSeriesId, channelId: TimeSeriesChannelId, array : Array[_], start : Int, length : Int) : Unit = {
+  def readFullChannel(id : MultiChannelTimeSeriesId, channelId: TimeSeriesChannelId, array : Array[_], readStart : Int, destStart : Int, length : Int) : Unit = {
     val channelFile : File = channelPathFn(id, channelId.toString).toFile
     val raf = new RandomAccessFile(channelFile, "r")
     val inChannel = raf.getChannel
-    val mbb : MappedByteBuffer= inChannel.map(FileChannel.MapMode.READ_ONLY, 0, channelFile.length())
-    val sfreq : BigDecimal = BigDecimal(mbb.getDouble)
-    val nSamples : Int = mbb.getInt
+    val itemSize = id match {
+      case _ : DoubleMultiChannelTimeSeriesId => 8
+      case _ : IntMultiChannelTimeSeriesId => 4
+      case _ : BooleanMultiChannelTimeSeriesId => 1
+      case _ => throw new Error("unsuported typ")
+    }
+    val mbb : MappedByteBuffer= inChannel.map(FileChannel.MapMode.READ_ONLY, itemSize * readStart, channelFile.length()-(itemSize*readStart))
     array match {
       case array : Array[Double] => {
         val mdb: DoubleBuffer = mbb.asDoubleBuffer
-        mdb.get(array, start, length)
+        mdb.get(array, destStart, length)
         mdb.clear()
       }
       case array : Array[Int] => {
         val mib: IntBuffer = mbb.asIntBuffer()
-        mib.get(array, start, length)
+        mib.get(array, destStart, length)
         mib.clear()
       }
       case array : Array[Boolean] => {
         val tmpArray = Array.ofDim[Byte](length)
         mbb.get(tmpArray)
-        tmpArray.map( b => if (b==0) false else true).copyToArray(array, start)
+        tmpArray.map( b => if (b==0) false else true).copyToArray(array, destStart)
       }
     }
     mbb.clear()
@@ -355,13 +362,13 @@ class BinStore(baseDirectoryString : String, nThreads : Int = 32) extends DataSt
   override def putMultiChannelTimeSeries(id: MultiChannelTimeSeriesId, data: MultiChannelTimeSeriesData[_]): Unit = {
     val chansPath: Path = channelPathFn(id, channelsFileKey)
     Files.write(chansPath, data.channels.map(_.id).mkString("\n").getBytes(StandardCharsets.UTF_8))
-    writeMultiChannelTimeSeriesMetadata(id, data.metadata)
+    this.putTimes(id, data.times)
     val futures = data match {
       case d: MultiChannelTimeSeriesData[_] => {
         d.channels.zipWithIndex.map { case (chanId: TimeSeriesChannelId, i: Int) => {
           implicit val ec = ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor)
           Future {
-            writeFullChannel(id, chanId, d.data.data, i * d.data.rows, d.data.rows, d.metadata.sfreq)
+            writeFullChannel(id, chanId, d.data.data, i * d.data.rows, d.data.rows)
           }
         }
         }
@@ -375,46 +382,46 @@ class BinStore(baseDirectoryString : String, nThreads : Int = 32) extends DataSt
 
   override def getMultiChannelTimeSeries(id: MultiChannelTimeSeriesId): MultiChannelTimeSeriesData[_] = {
     val channels : Vector[TimeSeriesChannelId] = this.getChannels(id)
-    val metadata : MultiChannelTimeSeriesMetadata[_] = this.getMultiChannelTimeSeriesMetadata(id)
+    val times = this.getTimes(id)
     id match {
       case id : DoubleMultiChannelTimeSeriesId =>{
-        val dataArray = Array.ofDim[Double](metadata.length * channels.length)
+        val dataArray = Array.ofDim[Double](times.length * channels.length)
         val futures = channels.zipWithIndex.map{case (chanId : TimeSeriesChannelId, i : Int) => {
           implicit val ec = ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor)
           Future {
-            readFullChannel(id, chanId, dataArray, i * metadata.length, metadata.length)
+            readFullChannel(id, chanId, dataArray, 0, i * times.length, times.length)
           }
         }
         }
-        val data : DenseMatrix[Double] = new DenseMatrix[Double](metadata.length, channels.length, dataArray)
         Await.ready(Future.sequence(futures), Duration.Inf)
-        DoubleMultiChannelTimeSeriesData(data, Vector.tabulate[Timestamp](metadata.length){i : Int => Timestamp(BigDecimal(i)/metadata.sfreq)}, channels)
+        val data : DenseMatrix[Double] = new DenseMatrix[Double](times.length, channels.length, dataArray)
+        DoubleMultiChannelTimeSeriesData(data, times, channels)
       }
       case id : IntMultiChannelTimeSeriesId =>{
-        val dataArray = Array.ofDim[Int](metadata.length * channels.length)
+        val dataArray = Array.ofDim[Int](times.length * channels.length)
         val futures = channels.zipWithIndex.map{case (chanId : TimeSeriesChannelId, i : Int) => {
           implicit val ec = ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor)
           Future {
-            readFullChannel(id, chanId, dataArray, i * metadata.length, metadata.length)
+            readFullChannel(id, chanId, dataArray, 0, i * times.length, times.length)
           }
         }
         }
-        val data : DenseMatrix[Int] = new DenseMatrix[Int](metadata.length, channels.length, dataArray)
         Await.ready(Future.sequence(futures), Duration.Inf)
-        IntMultiChannelTimeSeriesData(data, Vector.tabulate[Timestamp](metadata.length){i : Int => Timestamp(BigDecimal(i)/metadata.sfreq)}, channels)
+        val data : DenseMatrix[Int] = new DenseMatrix[Int](times.length, channels.length, dataArray)
+        IntMultiChannelTimeSeriesData(data, times, channels)
       }
       case id : BooleanMultiChannelTimeSeriesId =>{
-        val dataArray = Array.ofDim[Boolean](metadata.length * channels.length)
+        val dataArray = Array.ofDim[Boolean](times.length * channels.length)
         val futures = channels.zipWithIndex.map{case (chanId : TimeSeriesChannelId, i : Int) => {
           implicit val ec = ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor)
           Future {
-            readFullChannel(id, chanId, dataArray, i * metadata.length, metadata.length)
+            readFullChannel(id, chanId, dataArray, 0, i * times.length, times.length)
           }
         }
         }
-        val data : DenseMatrix[Boolean] = new DenseMatrix[Boolean](metadata.length, channels.length, dataArray)
         Await.ready(Future.sequence(futures), Duration.Inf)
-        BooleanMultiChannelTimeSeriesData(data, Vector.tabulate[Timestamp](metadata.length){i : Int => Timestamp(BigDecimal(i)/metadata.sfreq)}, channels)
+        val data : DenseMatrix[Boolean] = new DenseMatrix[Boolean](times.length, channels.length, dataArray)
+        BooleanMultiChannelTimeSeriesData(data, times, channels)
       }
 
       case _ => throw new NotImplementedError("Type of timeseries doesn't exist")
@@ -422,16 +429,18 @@ class BinStore(baseDirectoryString : String, nThreads : Int = 32) extends DataSt
   }
 
   def writeMultiChannelTimeSeriesMetadata(id : MultiChannelTimeSeriesId, meta : MultiChannelTimeSeriesMetadata[_]) : Unit = {
+    throw new Error("This shouldn't be used anymore")
     Files.write(storeUtils.channelPathFn(id, timesFileKey),
-      Array(meta.startTime.toString, meta.sfreq.toString, meta.length.toString).mkString("\n").getBytes(StandardCharsets.UTF_8))
+      Array(meta.startTime.toString, meta.length.toString, meta.sfreq.toString).mkString("\n").getBytes(StandardCharsets.UTF_8))
   }
 
   def getMultiChannelTimeSeriesMetadata(id : MultiChannelTimeSeriesId) : MultiChannelTimeSeriesMetadata[_] = {
+    throw new Error("This shouldn't be used anymore")
     val timeMetadata = Files.readAllLines(channelPathFn(id, timesFileKey)).asScala.toVector
     id match {
-      case id : DoubleMultiChannelTimeSeriesId => new MultiChannelTimeSeriesMetadata[Int](timeMetadata(1).toInt, BigDecimal(timeMetadata(0)))
-      case id : IntMultiChannelTimeSeriesId => new MultiChannelTimeSeriesMetadata[Int](timeMetadata(1).toInt, BigDecimal(timeMetadata(0)))
-      case id : BooleanMultiChannelTimeSeriesId => new MultiChannelTimeSeriesMetadata[Boolean](timeMetadata(1).toInt, BigDecimal(timeMetadata(0)))
+      case id : DoubleMultiChannelTimeSeriesId => new MultiChannelTimeSeriesMetadata[Int](Timestamp(timeMetadata(0)), timeMetadata(1).toInt, BigDecimal(timeMetadata(2)))
+      case id : IntMultiChannelTimeSeriesId => new MultiChannelTimeSeriesMetadata[Int](Timestamp(timeMetadata(0)), timeMetadata(1).toInt, BigDecimal(timeMetadata(2)))
+      case id : BooleanMultiChannelTimeSeriesId => new MultiChannelTimeSeriesMetadata[Boolean](Timestamp(timeMetadata(0)), timeMetadata(1).toInt, BigDecimal(timeMetadata(2)))
       case _ => throw new NotImplementedError()
     }
   }
@@ -444,9 +453,73 @@ class BinStore(baseDirectoryString : String, nThreads : Int = 32) extends DataSt
       case "meg" => chans.slice(0,306)
     }
   }
+  def putTimes(id : MultiChannelTimeSeriesId, times : Vector[Timestamp]) : Unit = {
+    Files.write(storeUtils.channelPathFn(id, timesFileKey), times.mkString("\n").getBytes(StandardCharsets.UTF_8))
+  }
+
+  def getTimes(id: MultiChannelTimeSeriesId): Vector[Timestamp] = {
+    Files.readAllLines(channelPathFn(id, timesFileKey)).asScala.toVector.map(Timestamp(_))
+  }
 
   override def getMultiChannelTimeSeriesWindow(id: MultiChannelTimeSeriesWindowId): MultiChannelTimeSeriesWindowData[_] = {
-    null
+    val channels : Vector[TimeSeriesChannelId] = this.getChannels(id.fullDataId)
+    val times : Vector[Timestamp] = getTimes(id.fullDataId)
+    val startResult = times.search(id.startTime)
+    val endResult = times.search(id.endTime)
+
+    val startI : Int = startResult match {
+      case Found(i) => i
+      case InsertionPoint(i) => if(i < times.length) i else throw new Error("Start time is outside bounds")
+    }
+    val length : Int = endResult match {
+      case Found(i) =>{(i-startI)+1}
+      case InsertionPoint(i) => {(i-startI)}
+    }
+    val subTimes = times.slice(startI, startI + length)
+
+    id match {
+      case id : DoubleMultiChannelTimeSeriesWindowId =>{
+        val dataArray = Array.ofDim[Double](subTimes.length * channels.length)
+        val futures = channels.zipWithIndex.map{case (chanId : TimeSeriesChannelId, i : Int) => {
+          implicit val ec = ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor)
+          Future {
+            readFullChannel(id.fullDataId, chanId, dataArray, startI, (i * subTimes.length), length)
+          }
+        }
+        }
+        Await.ready(Future.sequence(futures), Duration.Inf)
+        val data : DenseMatrix[Double] = new DenseMatrix[Double](subTimes.length, channels.length, dataArray)
+        DoubleMultiChannelTimeSeriesWindowData(data, subTimes, channels)
+      }
+      case id : IntMultiChannelTimeSeriesWindowId =>{
+        val dataArray = Array.ofDim[Int](subTimes.length * channels.length)
+        val futures = channels.zipWithIndex.map{case (chanId : TimeSeriesChannelId, i : Int) => {
+          implicit val ec = ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor)
+          Future {
+            readFullChannel(id.fullDataId, chanId, dataArray,startI, (i * subTimes.length), length)
+          }
+        }
+        }
+        Await.ready(Future.sequence(futures), Duration.Inf)
+        val data : DenseMatrix[Int] = new DenseMatrix[Int](subTimes.length, channels.length, dataArray)
+        IntMultiChannelTimeSeriesWindowData(data, subTimes, channels)
+      }
+      case id : BooleanMultiChannelTimeSeriesWindowId =>{
+        val dataArray = Array.ofDim[Boolean](subTimes.length * channels.length)
+        val futures = channels.zipWithIndex.map{case (chanId : TimeSeriesChannelId, i : Int) => {
+          implicit val ec = ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor)
+          Future {
+            readFullChannel(id.fullDataId, chanId, dataArray,startI, (i * subTimes.length), length)
+          }
+        }
+        }
+        Await.ready(Future.sequence(futures), Duration.Inf)
+        val data : DenseMatrix[Boolean] = new DenseMatrix[Boolean](subTimes.length, channels.length, dataArray)
+        BooleanMultiChannelTimeSeriesWindowData(data, subTimes, channels)
+      }
+
+      case _ => throw new NotImplementedError("Type of timeseries doesn't exist")
+    }
   }
 }
 

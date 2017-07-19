@@ -90,10 +90,17 @@ class TestAlphaContext extends FlatSpec with Matchers{
    MCTS
    */
 
+
   "putting double MCTS" should "put and get correctly" in {
     for ((tm, i) <- doubleMatrices.zipWithIndex) {
+      val startTimeDouble = r.nextDouble()*r.nextInt(5) * (if(r.nextBoolean()) -1.0 else 1.0)
+      val startTime = Timestamp(startTimeDouble)
+      val sfreq = 1 + BigDecimal(r.nextDouble*r.nextInt(2000))
+      val step = BigDecimal(1)/sfreq
+      val times = Vector.tabulate[Timestamp](tm.rows){i : Int =>  Timestamp(startTime.underlyingBD + BigDecimal(i)/sfreq)}
+
       val ts = DoubleMultiChannelTimeSeriesData(tm,
-        Range(0, tm.rows).map(_ * BigDecimal(.001)).map(Timestamp(_)).toVector,
+        times,
         Range(0, tm.cols).map(ci => ci.toString).map(cs => TimeSeriesChannelId(cs)).toVector
       )
       val iStr = i.toString
@@ -102,6 +109,29 @@ class TestAlphaContext extends FlatSpec with Matchers{
 
       val d = alphaContext.get(testId).asInstanceOf[DoubleMultiChannelTimeSeriesData]
       d should be(ts)
+
+      for(i <- Range(0,10)){
+        val lastI = times.length-1
+        val startI = r.nextInt(times.length)
+        val endI = startI + r.nextInt(times.length-startI)
+        val subTimes = times.slice(startI, endI+1)
+        val startT : Timestamp = startI match {
+          case 0 => times(0)
+          case i => if(r.nextBoolean) times(i) else Timestamp((times(i).underlyingBD+times(i-1).underlyingBD)/BigDecimal(2))
+        }
+        val endT : Timestamp = endI == lastI match {
+          case true => { if(r.nextBoolean()) times(lastI) else Timestamp(times(lastI).underlyingBD+BigDecimal(1))}
+          case false => {if(r.nextBoolean) times(endI) else Timestamp((times(endI).underlyingBD+times(endI+1).underlyingBD)/BigDecimal(2))}
+        }
+        println(testId, startT, endT)
+        val windowId = DoubleMultiChannelTimeSeriesWindowId(testId, startT, endT)
+        val subData = alphaContext.get(windowId).asInstanceOf[DoubleMultiChannelTimeSeriesWindowData]
+        val returnedD = new DoubleMultiChannelTimeSeriesWindowData(tm(startI to endI,::), subTimes, d.channels)
+        //subData.times should be (returnedD.times)
+        subData.data should be (returnedD.data)
+        //subData.channels should be (returnedD.channels)
+        //subData should be (returnedD)
+      }
     }
   }
 

@@ -36,7 +36,8 @@ abstract class DataId extends Id {
 trait SubsetOfDataId extends DataId {
   final val subsetSep = '#'
   val fullDataId : DataId
-  val fullDataIdStr = id.split(subsetSep)(0)
+  lazy val fullDataIdStr = id.split(subsetSep)(0)
+  lazy val subsetStr = id.split(subsetSep)(1)
 }
 
 class TypelessDataId(val id : String) extends DataId
@@ -107,18 +108,34 @@ object DoubleMultiChannelTimeSeriesId{def apply(id: String) = new DoubleMultiCha
 object IntMultiChannelTimeSeriesId{def apply(id: String) = new IntMultiChannelTimeSeriesId(id)}
 object BooleanMultiChannelTimeSeriesId{def apply(id: String) = new BooleanMultiChannelTimeSeriesId(id)}
 
-abstract class MultiChannelTimeSeriesWindowId(val id: String) extends SubsetOfDataId
+abstract class MultiChannelTimeSeriesWindowId(val id: String) extends SubsetOfDataId {
+  val timeSep = ","
+  val timeComponents : Seq[String]= this.subsetStr.split(timeSep)
+  println("components", timeComponents(0), timeComponents(1), id)
+  val startTime = Timestamp(timeComponents(0))
+  val endTime = Timestamp(timeComponents(1))
+  override val fullDataId : MultiChannelTimeSeriesId
+}
 class DoubleMultiChannelTimeSeriesWindowId(override val id : String) extends MultiChannelTimeSeriesWindowId(id){
-  override lazy val fullDataId: DataId = DoubleMultiChannelTimeSeriesId(this.fullDataIdStr)
+  override lazy val fullDataId = DoubleMultiChannelTimeSeriesId(this.fullDataIdStr)
+  println("id", id)
 }
 class IntMultiChannelTimeSeriesWindowId(override val id : String) extends MultiChannelTimeSeriesWindowId(id){
-  override lazy val fullDataId: DataId = IntMultiChannelTimeSeriesId(this.fullDataIdStr)
+  override lazy val fullDataId  = IntMultiChannelTimeSeriesId(this.fullDataIdStr)
 }
 class BooleanMultiChannelTimeSeriesWindowId(override val id : String) extends MultiChannelTimeSeriesWindowId(id){
-  override lazy val fullDataId: DataId = BooleanMultiChannelTimeSeriesId(this.fullDataIdStr)
+  override lazy val fullDataId = BooleanMultiChannelTimeSeriesId(this.fullDataIdStr)
 }
 
-object DoubleMultiChannelTimeSeriesWindowId{def apply(id: String) = new DoubleMultiChannelTimeSeriesWindowId(id)}
+object DoubleMultiChannelTimeSeriesWindowId{
+  def apply(id: String) = new DoubleMultiChannelTimeSeriesWindowId(id)
+  def apply(id : DoubleMultiChannelTimeSeriesId, startT: Timestamp, endT : Timestamp)  = {
+    val idStr = id.id
+    val sT = startT.toString
+    val eT = endT.toString
+    new DoubleMultiChannelTimeSeriesWindowId(s"$idStr#$sT,$eT")
+  }
+}
 object IntMultiChannelTimeSeriesWindowId{def apply(id: String) = new IntMultiChannelTimeSeriesWindowId(id)}
 object BooleanMultiChannelTimeSeriesWindowId{def apply(id: String) = new BooleanMultiChannelTimeSeriesWindowId(id)}
 

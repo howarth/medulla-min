@@ -146,15 +146,25 @@ abstract class MultiChannelTimeSeriesData[T](
     val times : Vector[Timestamp],
     val channels : Vector[TimeSeriesChannelId])
   extends Data {
-  val metadata = new MultiChannelTimeSeriesMetadata(times.length, BigDecimal(1)/(times(1).underlyingBD-times(0).underlyingBD))
+  val metadata = null //new MultiChannelTimeSeriesMetadata(times(0), times.length, BigDecimal(1)/(times(1).underlyingBD-times(0).underlyingBD))
+
+  if(data.rows != times.length) throw new Error("the timesstamps and number of rows does not match up")
+  if(data.cols != channels.length) throw new Error("the channels and number of cols does not match up")
 
   override def equals(that: Any): Boolean = {
     if(this.getClass != that.getClass) return false
     val thatCast = that.asInstanceOf[MultiChannelTimeSeriesData[_]]
-    thatCast.times == this.times && thatCast.channels == this.channels &&  thatCast.data == this.data
+    thatCast.times == this.times && thatCast.channels == this.channels &&
+      thatCast.data == this.data
   }
 }
-class MultiChannelTimeSeriesMetadata[T](val length : Int, val sfreq : BigDecimal)(implicit tag : TypeTag[T]) extends HomogenousDataMetadata[T]()(tag)
+class MultiChannelTimeSeriesMetadata[T](val startTime : Timestamp, val length : Int, val sfreq : BigDecimal)(implicit tag : TypeTag[T]) extends HomogenousDataMetadata[T]()(tag){
+  override def equals(that : Any): Boolean = {
+    if(this.getClass != that.getClass) return false
+    val thatCast = that.asInstanceOf[MultiChannelTimeSeriesMetadata[_]]
+    this.startTime == thatCast.startTime && this.length == thatCast.length && this.sfreq == thatCast.sfreq
+  }
+}
 
 class DoubleMultiChannelTimeSeriesData( data : DenseMatrix[Double],
     times : Vector[Timestamp],
