@@ -3,15 +3,14 @@ import main.scala.core._
 import main.scala.store._
 import scala.util.Random
 import breeze.linalg.{DenseMatrix, DenseVector}
+import main.scala.contexts._
 
 /**
   * Created by dhowarth on 7/10/17.
   */
 class TestAlphaContext extends FlatSpec with Matchers{
 
-  val binStore = new BinStore("/Users/dhowarth/work/db/bindata/")
-  val binRegistry = new BinRegistry("/Users/dhowarth/work/db/bindata/")
-  val alphaContext = new AlphaContext(binRegistry, binStore)
+  val alphaContext = EggsAlphaContext()
   val r = new Random(0)
 
   val doubleScalars : Array[Double] = Array.fill(100)(r.nextDouble)
@@ -165,9 +164,5 @@ class TestAlphaContext extends FlatSpec with Matchers{
     }
   }
 
-
-  "getting random windows of double MCTS" should " get correctly" in {
-
-  }
 
 }

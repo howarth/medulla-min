@@ -436,7 +436,7 @@ class BinStore(baseDirectoryString : String, nThreads : Int = 32) extends DataSt
 
   def getMultiChannelTimeSeriesMetadata(id : MultiChannelTimeSeriesId) : MultiChannelTimeSeriesMetadata[_] = {
     throw new Error("This shouldn't be used anymore")
-    val timeMetadata = Files.readAllLines(channelPathFn(id, timesFileKey)).asScala.toVector
+    val timeMetadata = Files.readAllLines(channelPathFn(id, timesFileKey), StandardCharsets.UTF_8).asScala.toVector
     id match {
       case id : DoubleMultiChannelTimeSeriesId => new MultiChannelTimeSeriesMetadata[Int](Timestamp(timeMetadata(0)), timeMetadata(1).toInt, BigDecimal(timeMetadata(2)))
       case id : IntMultiChannelTimeSeriesId => new MultiChannelTimeSeriesMetadata[Int](Timestamp(timeMetadata(0)), timeMetadata(1).toInt, BigDecimal(timeMetadata(2)))
@@ -447,7 +447,7 @@ class BinStore(baseDirectoryString : String, nThreads : Int = 32) extends DataSt
 
   def getChannels(id: MultiChannelTimeSeriesId, group : String = "meg"): Vector[TimeSeriesChannelId] = {
     val chansPath : Path = channelPathFn(id, channelsFileKey)
-    val chans = Files.readAllLines(chansPath).asScala.toVector.map(TimeSeriesChannelId(_))
+    val chans = Files.readAllLines(chansPath, StandardCharsets.UTF_8).asScala.toVector.map(TimeSeriesChannelId(_))
     group match {
       case "all" => chans
       case "meg" => chans.slice(0,306)
@@ -458,7 +458,7 @@ class BinStore(baseDirectoryString : String, nThreads : Int = 32) extends DataSt
   }
 
   def getTimes(id: MultiChannelTimeSeriesId): Vector[Timestamp] = {
-    Files.readAllLines(channelPathFn(id, timesFileKey)).asScala.toVector.map(Timestamp(_))
+    Files.readAllLines(channelPathFn(id, timesFileKey), StandardCharsets.UTF_8).asScala.toVector.map(Timestamp(_))
   }
 
   override def getMultiChannelTimeSeriesWindow(id: MultiChannelTimeSeriesWindowId): MultiChannelTimeSeriesWindowData[_] = {

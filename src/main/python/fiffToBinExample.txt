@@ -1,1 +1,1 @@
-/Users/dhowarth/work/db/data/test/data/raw/A/A_test_01_raw.fif /Users/dhowarth/work/db/bindata/test/A/01/raw/test_A_01_raw_CHANNEL-NAME.bin
+/Users/dhowarth/work/db/data/test/data/testslug/A/A_test_01_testslug_raw.fif /Users/dhowarth/work/db/bindata/test/A/01/testslug/test_A_01_testslug_CHANNEL-NAME.bin

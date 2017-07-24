@@ -41,8 +41,6 @@ if __name__ == "__main__":
       out_fname = out.replace(_channel_name_pattern, ch_name)
       ensure_dir_exists(os.path.dirname(out_fname))
       with open(out_fname, "wb") as fid:
-        np.array(r.info['sfreq'], dtype=">f8").tofile(fid)
-        np.array(len(r), dtype=">i8").tofile(fid)
         np.array( data[i,:], dtype=">f8").tofile(fid)
 
 
@@ -53,6 +51,9 @@ if __name__ == "__main__":
 
     out_fname = out.replace(_channel_name_pattern, "times")
     with open(out_fname, "w") as fid:
-      print("%s" % decimal.Decimal(r.info['sfreq']), file=fid)
-      print("%d" % decimal.Decimal(len(r)), file=fid)
+        for t in r.times:
+          print(t, file=fid)
 
+    out_fname = out.replace(_channel_name_pattern, "registry")
+    with open(out_fname, "w") as fid:
+      print("DOUBLE_TS", file=fid)

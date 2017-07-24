@@ -111,14 +111,12 @@ object BooleanMultiChannelTimeSeriesId{def apply(id: String) = new BooleanMultiC
 abstract class MultiChannelTimeSeriesWindowId(val id: String) extends SubsetOfDataId {
   val timeSep = ","
   val timeComponents : Seq[String]= this.subsetStr.split(timeSep)
-  println("components", timeComponents(0), timeComponents(1), id)
   val startTime = Timestamp(timeComponents(0))
   val endTime = Timestamp(timeComponents(1))
   override val fullDataId : MultiChannelTimeSeriesId
 }
 class DoubleMultiChannelTimeSeriesWindowId(override val id : String) extends MultiChannelTimeSeriesWindowId(id){
   override lazy val fullDataId = DoubleMultiChannelTimeSeriesId(this.fullDataIdStr)
-  println("id", id)
 }
 class IntMultiChannelTimeSeriesWindowId(override val id : String) extends MultiChannelTimeSeriesWindowId(id){
   override lazy val fullDataId  = IntMultiChannelTimeSeriesId(this.fullDataIdStr)
