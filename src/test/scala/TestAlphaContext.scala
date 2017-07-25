@@ -10,7 +10,7 @@ import main.scala.contexts._
   */
 class TestAlphaContext extends FlatSpec with Matchers{
 
-  val alphaContext = EggsAlphaContext()
+  val alphaContext = HostnameDependentAlphaContext()
   val r = new Random(0)
 
   val doubleScalars : Array[Double] = Array.fill(100)(r.nextDouble)
