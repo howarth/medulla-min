@@ -11,6 +11,7 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
 import java.util.concurrent.Executors
 import java.nio.charset.StandardCharsets
+import scala.util.{Success, Failure}
 
 import main.scala.core._
 import main.java.constants.DataTypeStrings
@@ -93,6 +94,17 @@ class AlphaContext(
       case _ => throw new Exception("Unknown DataId type")
     }
     */
+  }
+
+  def putMany(data: Seq[(DataId, Data)]): Unit = {
+    implicit val ec = ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor)
+    val futures : Seq[Future[Unit]] = for (d <- data ) yield Future{put(d._1, d._2)}
+    Await.result(Future.sequence(futures), Duration.Inf)
+  }
+
+  def getMany(ids: Seq[DataId]): Vector[Data] = {
+    val futures : Future[List[Data]] = Future.sequence(ids.toList.map(id => Future{get(id)}))
+    Await.result(futures, Duration.Inf).toVector
   }
 }
 

@@ -42,6 +42,17 @@ class TestAlphaContext extends FlatSpec with Matchers{
     }
   }
 
+  "puting double scalars" should "put and get many correctly" in {
+    val data : List[(Double, Int)] = doubleScalars.zipWithIndex.toList
+    val dataAndId : List[(DoubleScalarId, DoubleScalarData)] =
+      data.map(t =>{val id = t._1; (DoubleScalarId(s"many$id"), DoubleScalarData(t._2))})
+    alphaContext.putMany(dataAndId)
+    val justIds = dataAndId.map(_._1)
+    val retData = alphaContext.getMany(justIds)
+    val justData = dataAndId.map(_._2)
+    retData should be (justData)
+  }
+
   "puting double vectors" should "put and get correctly" in {
     for ((tv, i) <- doubleVectors.zipWithIndex) {
       val vec : DoubleVectorData = DoubleVectorData(tv)

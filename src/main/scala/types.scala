@@ -11,7 +11,9 @@ trait DataContext {
   val dataRegistry : DataRegistry
   val dataStore : DataStore
   def put(id : DataId, data : Data) : Unit
+  def putMany(data : Seq[(DataId, Data)]) : Unit
   def get(id : DataId) : Data
+  def getMany(ids : Seq[DataId]) : Vector[Data]
   def delete(id : DataId) : Unit
 }
 

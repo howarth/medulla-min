@@ -1,8 +1,10 @@
 package main.scala.models
 
+import main.scala.core._
+import main.scala.store._
 
-abstract class TimeSeriesTrainer()
-
-object RunPCAAndSave() {
+class NaiveBayes(context : DataContext, ids : Vector[MultiChannelTimeSeriesWindowId],
+                 labels : Vector[String], crossValidation : List[String]){
 
 }
+
