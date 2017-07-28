@@ -4,6 +4,18 @@ import main.scala.store._
 import java.lang.Runtime
 import java.lang.System
 
+
+object GetUELsAndStimuli {
+  def apply(metadataDir : String, subject : String, experiment : String ) ={
+    val blocks : Vector[String] = experiment match {
+      case "prep-role-1" => Vector("01", "02", "03", "04", "05", "06", "07", "08")
+      case _ => throw new Error(s"Unimplemented experiment $experiment")
+    }
+  }
+}
+
+
+
 /**
   * Created by dhowarth on 6/30/17.
   */

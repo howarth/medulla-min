@@ -145,6 +145,86 @@ class FileSystemStoreUtils(val baseDirString : String) {
 
 }
 
+trait ElementType {
+  val elemSize : Int
+}
+object DoubleType extends ElementType {
+  val elemSize = 8
+}
+object IntType extends ElementType {
+  val elemSize = 4
+}
+object LongType extends ElementType {
+  val elemSize = 8
+}
+object FloatType extends ElementType {
+  val elemSize = 4
+}
+object BooleanType extends ElementType {
+  val elemSize = 1
+}
+
+trait TensorIndex
+class IntervalIndex(val start : Int, val length : Int) extends TensorIndex
+object IntervalIndex{def apply(start : Int, length : Int) = new IntervalIndex(start, length)}
+object FullIndex extends TensorIndex
+
+case class TensorMetadata(val nDims : Int, val dims : Vector[Int], dataType : ElementType)
+
+object BinTensorStoreBuffer {
+
+  /*
+
+  val channelFile : File = channelPathFn(id, channelId.toString).toFile
+  val raf = new RandomAccessFile(channelFile, "rw")
+  val outChannel = raf.getChannel
+  val fileLength = id match {
+    case id : DoubleMultiChannelTimeSeriesId =>   8 * data.length
+    case id : IntMultiChannelTimeSeriesId =>   4 * data.length
+    case id : BooleanMultiChannelTimeSeriesId =>    data.length
+  }
+  val mbb : MappedByteBuffer= outChannel.map(FileChannel.MapMode.READ_WRITE, 0, fileLength)
+  data match {
+    case array : Array[Double] => {
+      val mdb: DoubleBuffer = mbb.asDoubleBuffer
+      mdb.put(array, start, length)
+      */
+
+
+  /* A header is
+    - 4 bytes for header length
+    - ndims * int width for
+    - 32 bytes for future information
+   */
+  val futureBytes = 32
+
+  def headerLength(metadata : TensorMetadata) : Int = {
+    metadata.dims.length * IntType.elemSize
+  }
+  def fileLength(metadata : TensorMetadata): Int ={
+    metadata.dims.reduceLeft(_ * _) * metadata.dataType.elemSize
+  }
+
+  def putTensor(p : Path, metadata : TensorMetadata, data : Array[_], majorDimension : Int) : Unit = {
+    majorDimension match {
+      case 0 => {
+        val mbb : MappedByteBuffer = (new RandomAccessFile(p.toFile, "rw"))
+          .getChannel.map(FileChannel.MapMode.READ_WRITE, 0, fileLength(metadata))
+      }
+      }
+      case _ => ???
+    }
+  }
+
+
+  def getTensorBuffer(p : Path, indices : Vector[TensorIndex], returnMajorDimension : Int) : ByteBuffer {
+
+
+  }
+}
+*/
+
+
 class BinStore(baseDirectoryString : String, nThreads : Int = 32) extends DataStore with
   ScalarRWDataStore with
   VectorRWDataStore with
